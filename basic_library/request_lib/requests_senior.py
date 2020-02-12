@@ -14,7 +14,7 @@ requests模块的高级用法
 
 # 文件上传
 files = {
-    'file': open('README', 'rb')
+    'file': open('../README', 'rb')
 }
 
 response = requests.post('http://httpbin.org/post', files=files)
