@@ -25,4 +25,4 @@ def get_one_page(url):
         return None
 
 
-# print(get_one_page('https://maoyan.com/board/4'))
+print(get_one_page('https://maoyan.com/board/4'))
