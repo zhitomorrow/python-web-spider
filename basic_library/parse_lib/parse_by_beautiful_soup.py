@@ -1,37 +1,16 @@
 #!/usr/bin/python3  
 # -*- coding: utf-8 -*-
-# @Time    : 2020/2/13 13:41
+# @Time    : 2020/2/13 20:23
 # @Author  : lzm
-# @File    : parse_by_xpath.py
+# @File    : parse_by_beautiful_soup.py
 
-from lxml import etree
+from bs4 import BeautifulSoup as bs
+import re
 
 '''
-使用xpath解析html
+Beautiful Soup提供一些简单的、Python式的函数来处理导航、搜索、修改分析树等功能。
+BS在解析时依赖解析器，由于lxml解析器速度快，容错强，因此推荐使用lxml解析器
 '''
-
-
-# base_url = 'https://maoyan.com/board/4'
-# html = ht.get_one_page(base_url)
-# print(html)
-
-# etree.tostring()方法修正html代码，如标签未闭合等，可以使用tostring()方法修正
-# html = etree.HTML(html)
-# result = etree.tostring(html)  # 返回值是bytes类型，因此需要decode一下转换为str
-# print(type(result))  # <class 'bytes'>
-# print(result.decode('utf-8'))
-
-# 通过读取文件的方式解析html
-'''
-file_html = etree.parse('test.html', etree.HTMLParser())
-file_result = etree.tostring(file_html)
-print(file_result.decode('utf-8'))
-'''
-
-# xpath 获取所有节点
-# result = html.xpath('//*')  # *代表匹配所有元素
-# print(result)  # 结果是一个列表，列表中的元素包含dom中的所有元素，
-
 
 html = '''
  <dl class="board-wrapper">
@@ -398,86 +377,113 @@ html = '''
   </dl>
 '''
 
-html = etree.HTML(html)
+soup = bs(html, 'lxml')
+# print(soup.prettify())  # 可以把要解析的字符串以标准的缩进格式输出，如果字符串本身不带html和body标签，那么会加上这两个标签
+print(soup.i.string)  # 输出i标签的文本（只输出第一个）
 
+
+# 节点选择器
+# 选择元素
+print(soup.i)
+print(type(soup.i))  # <class 'bs4.element.Tag'>
+print(soup.i.string)
+
+'''
+在bs中，经过选择器选择之后，选择结果都是bs4.element.Tag类型。
+使用soup.i这种方式选择元素时，即使符合条件的元素有多个，选择的结果也是只返回第一个
+'''
+
+# 提取信息
+# 获取节点名称
+print(soup.p.name)  # p
+# 获取属性
+print(soup.dl.attrs)  # {'class': ['board-wrapper']}
+print(soup.dl.attrs['class'])  # ['board-wrapper']
+print(soup.dl['class'])  # ['board-wrapper'] 等价于soup.dl.attrs['class']
+
+'''
+对于获取属性的返回结果，有的是字符串(id,name)，有的是列表（class），因此在处理结果时要注意判断类型
+'''
+
+# 获取内容|嵌套选择,使用string属性获取节点元素包含的文本内容
+print(soup.p.a.string)
+
+# 关联选择
 # 子节点
-# result = html.xpath('//dl/dd')  # 选择所有dl节点下的dd节点，但是只是获取到直接子节点，不包含孙子节点
-
-
-# 子孙节点，获取dd标签中的a标签
-# result = html.xpath('//dl/a')  # 由于dl下没有直接节点是a，此时返回结果是空列表
-# result = html.xpath('//dl//a')  # 使用//可以正确获取
-
-# 父节点
-# <p class="name"><a href="/films/1203" title="霸王别姬" data-act="boarditem-click" data-val="{movieId:1203}">霸王别姬</a></p>
-# result = html.xpath('//a[@href="/films/1203"]/../@class')
-# 也可以通过parent::来获取父节点
-# result = html.xpath('//a[@href="/films/1203"]/parent::*/@class')
-
-# 属性匹配
-# result = html.xpath('//p[@class="name"]')
-
-# 文本获取
-# 使用xpath的text()方法可以获取节点中的文本
+print(soup.div.contents)  # 使用contents属性可以获取到选中元素的直接子节点
 '''
- <p class="star">主演：周星驰,莫文蔚,张柏芝</p>
+['\n', <a data-act="boarditem-click" data-val="{movieId:1203}" href="/films/1203" title="霸王别姬">
+         霸王别姬
+        </a>, '\n']
+contents属性只会列出直接子节点，最后形成一个列表
 '''
-# result = html.xpath('//p[@class="star"]/text()')
 
-# 属性值获取
+# 使用children也可以获得直接子节点，只不过返回的是一个迭代器，需要便利获取其中的元素
+for i, child in enumerate(soup.div.children):
+    print(i, child)
+
+
+# 子孙节点，使用descendants属性可以获取到子孙节点
+for j, children in enumerate(soup.div.descendants):
+    print(j, children)
+
+# 父节点和祖父节点
+print('父节点：%s' % soup.i.parent)
+print('祖父节点：%s' % soup.i.parents)  # 祖父节点返回结果是一个生成器
+print(list(enumerate(soup.i.parents)))
+
+# 兄弟节点
+print(soup.dd.next_sibling)  # 下一个兄弟节点
+print(soup.dd.previous_sibling)  # 前一个兄弟节点
+print(list(enumerate(soup.dd.next_siblings)))  # 当前节点后面的兄弟节点
+print(list(enumerate(soup.dd.previous_siblings)))  # 当前节点前面的兄弟节点
+
+# 方法选择器
 '''
-<a href="/films/1203" title="霸王别姬" data-act="boarditem-click" data-val="{movieId:1203}">霸王别姬</a>
+前面所述的选择方法都是通过属性来选择的，这种方式速度很快，但是在选择较为复杂的节点时比较繁琐。
+此时bs提供了方法选择器，如find_all()和find()，只需要传入响应的参数即可快速选择节点
+find_all(name, attrs, recursive, text, **kwargs)
+name:节点名称
+attrs:属性，以字典的形式传入
+text:匹配节点的文本，传入的形式可以是字符串也可以是正则表达式
 '''
-# result = html.xpath('//p[@class="name"]/a[@href="/films/1203"]/@title')
+print('--------------------------------------')
+print(soup.find_all('a'))
+print('--------------------------------------')
+print(soup.find_all(attrs={'data-act': 'boarditem-click'}))
+print('--------------------------------------')
+print(soup.find_all(text=re.compile('霸王')))
 
-
-# 属性多值匹配，如果属性值存在多个，那么再使用类似@class=xx的方式将获取不到，此时应该使用contains()方法
-'''<i class="board-index board-index-9">9</i>'''
-# result = html.xpath('//i[@class="board-index"]/text()')  #获取不到值
-# result = html.xpath('//i[contains(@class, "board-index")]/text()')
-
-# 多属性匹配，使用多个属性值匹配单个元素
 '''
-<a href="/films/1203" title="霸王别姬" data-act="boarditem-click" data-val="{movieId:1203}">霸王别姬</a>
+find()方法和find_all()方法的使用方法完全一样，只不过find()方法只返回符合条件的第一个节点
 '''
-# result = html.xpath('//a[@href="/films/1203" and @title="霸王别姬"]/@data-val')
+print(soup.find(attrs={'data-act': 'boarditem-click'}))
+print('--------------------------------------')
+print(soup.img.find_parent())  # 返回直接父节点
+print(soup.img.find_parents())  # 返回祖父节点
+'''
+类似的方法
+find_next_siblings()/find_next_sibling()
+find_previous_siblings()/find_previous_sibling()
+find_all_next()/find_next()
+find_all_previous()/find_previous()
+'''
+print('================================')
+# css选择器
+'''
+bs还支持css选择器，使用css选择器时，只需要调用select()方法，传入相应的css选择器即可
+'''
+
+print(soup.select('.releasetime'))
+print(soup.select('dl>dd'))
+for dd in soup.select('dl a'):
+    print(dd['href']+','+dd.attrs['href'])
 
 
-# 按序选择
-result = html.xpath('//dl/dd[1]/i/text()')  # 索引从1开始
-print(result)
-result = html.xpath('//dl/dd[last()]/i/text()')
-print(result)
-result = html.xpath('//dl/dd[position()<3]/i/text()')
-print(result)
-result = html.xpath('//dl/dd[last()-2]/i/text()')
-print(result)
 
 
-# 节点轴选择
-# xpath提供了很多节点轴的选择方法，包括获取子元素、兄弟元素、父元素、祖先元素等
 
-# 祖先节点
-result = html.xpath('//dl/dd[1]/ancestor::*')  # 返回html | body | dl节点
-print(result)
-# 获取指定的祖先节点
-result = html.xpath('//dl/dd[1]/ancestor::dl')
-print(result)
-# 属性轴，获取节点的全部属性
-result = html.xpath('//dl/dd[1]/a/attribute::*')
-print(result)
-# 获取直接子节点
-result = html.xpath('//dl/dd[1]/child::i')
-print(result)
-# 获取子孙节点
-result = html.xpath('//dl/dd[1]/descendant::a')
-print(result)
-# 获取当前节点后的所有节点,*表示全部，[1]表示第一个
-result = html.xpath('//dl/dd[1]/following::*[1]')
-print(result)
-# 获取当前节点之后的同级节点
-result = html.xpath('//dl/dd[2]/following-sibling::*')
-print(result)
+
 
 
 
