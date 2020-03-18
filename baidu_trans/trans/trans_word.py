@@ -31,17 +31,17 @@ def trans_keyword(word):
     :param word:
     :return:
     """
-    print(params)
+    # print(params)
     key = params['platform']['baidu']['key']
     app_id = str(params['platform']['baidu']['appId'])
-    print('key==>%s' % key)
-    print('appId==>%s' % app_id)
+    # print('key==>%s' % key)
+    # print('appId==>%s' % app_id)
     salt = random_num()
     sign = app_id + word + salt + key
-    print('sign==>%s' % sign)
+    # print('sign==>%s' % sign)
     hash_md5 = hashlib.md5(sign.encode('utf-8'))
     sign = hash_md5.hexdigest()
-    print('sign==>%s' % sign)
+    # print('sign==>%s' % sign)
 
     data = {
         'q': word,
@@ -59,11 +59,12 @@ def trans_keyword(word):
     response = requests.post(trans_api_url, headers=headers, data=data)
     # print('响应结果>>>>%s' % response.text)
     json_data = response.text
-    print(json_data)
-    print(type(json_data))
+    # print(json_data)
+    # print(type(json_data))
     text = json.loads(json_data)
-    print(type(text))
-    print(text['trans_result'][0]['dst'])
+    # print(type(text))
+    # print(text['trans_result'][0]['dst'])
+    return text['trans_result'][0]['dst']
 
 
 def random_num():
@@ -74,4 +75,4 @@ def random_num():
     return str(random.randint(10000, 100000))
 
 
-trans_keyword('apple')
+# trans_keyword('apple')
