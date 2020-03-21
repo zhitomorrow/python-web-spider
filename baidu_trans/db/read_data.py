@@ -6,8 +6,10 @@
 
 import pymysql
 import time
+import csv
 from baidu_trans.my_config.application_parameter import params
 from baidu_trans.trans.trans_word import trans_keyword as tk
+from baidu_trans.trans.tencent_tarns import tencent as te
 
 """
 从mysql中读取数据
@@ -46,22 +48,40 @@ def get_data():
     从数据库中读取数据
     :return:
     """
+    trans_list = []
     connect = get_connect()
     try:
         cursor = connect.cursor()
-        sql = 'select * from {table} '.format(table=table)
+        sql = 'select * from {table}  limit 0, 5 '.format(table=table)
         cursor.execute(sql)
         results = cursor.fetchall()
         print('查询到的数据条数>>>[%s]' % cursor.rowcount)
-        # print('查询结果：%s' % results)
-        # print(type(results))
         for data in results:
-            print('原始关键词{src}，翻译后的关键词{dest}'.format(src=data[1], dest=tk(data[1])))
+            direct = {'src': data[1], 'baidu_trans': tk(data[1]), 'tencent_trans': te(data[1])}
+            trans_list.append(direct)
             time.sleep(2)
     except Exception as e:
         print('查询数据时出现异常,异常原因：%s' % e)
     finally:
         close_connect(connect)
+    return trans_list
 
 
-get_data()
+def export_csv(data):
+    """
+    将翻译后的数据导出到csv文件中
+    :return:
+    """
+    with open('f:/data.csv', 'a', encoding='utf-8-sig') as file:
+        # writer = csv.writer(file, delimiter=' ')
+        fieldnames = ['src', 'baidu_trans', 'tencent_trans']
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in data:
+            writer.writerow(row)
+
+
+if __name__ == '__main__':
+    export_csv(get_data())
+
+
